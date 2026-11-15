@@ -1,0 +1,59 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // ─────────────────────────────────────────────────────────────
+  // 部署配置模板：下面标了「改成你的」的地方，部署前请替换成自己的值。
+  //   * 本地开发（npm run dev / npm run db:init）不校验这些值，占位符也能跑；
+  //   * 部署到 Cloudflare 前必须替换，或者直接用 GitHub Actions 自动部署
+  //     （Actions 会用仓库 Secrets 自动生成配置，见 .github/workflows/deploy.yml）。
+  //   * 想保留一份含真实值的私有配置：复制本文件为 wrangler.local.jsonc
+  //     （已在 .gitignore 里），deploy / 远程命令会优先使用它。
+  // ─────────────────────────────────────────────────────────────
+  "name": "fademail",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  // 站点唯一入口走 Worker Route；workers.dev 与预览域名关掉
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    // 关掉 .html → 无后缀 的自动重定向，/admin 才能直接取到 admin.html
+    "html_handling": "none",
+    // HTML 入口必须先过 Worker，否则静态资源层会绕过安全响应头
+    // true = 所有请求（含 JS/CSS）都先过 Worker 门禁，未验证时拿不到任何资源
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fademail", // 改成你的：D1 数据库名
+      "database_id": "00000000-0000-0000-0000-000000000000" // 改成你的：D1 Database ID
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  // 改成你的：站点主域名（托管在 Cloudflare 的 zone 下）。
+  // 用 Worker Route 而不是 Custom Domain：Custom Domain 会把 DNS 锁成橙云，
+  // 无法做大陆优选；Route 允许这条记录保持灰云、指向优选 IP，Worker 照样接管请求。
+  "routes": [
+    { "pattern": "fademail.example.com/*", "zone_name": "example.com" } // 改成你的
+  ],
+  "triggers": {
+    // 定时清理过期邮箱：每 23 分钟一次
+    "crons": ["*/23 * * * *"]
+  },
+  "vars": {
+    // 改成你的：收信域名（需在这些域名上开启 Email Routing，顺序即前台下拉顺序）
+    "MAIL_DOMAINS": "mail.example.com,fademail.example.com",
+    // 改成你的：站点主地址，生成邮件内绝对链接、CORS 白名单都以此为准
+    "SITE_URL": "https://fademail.example.com",
+    // 改成你的：接口 CORS 白名单（一般与 SITE_URL 相同）
+    "ALLOWED_ORIGINS": "https://fademail.example.com",
+    "DEFAULT_TTL_HOURS": "24",
+    "MAX_TTL_HOURS": "720",
+    "BRAND": "FadeMail"
+  }
+}

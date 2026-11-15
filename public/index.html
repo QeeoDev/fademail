@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FadeMail · 临时邮箱</title>
+<meta name="description" content="隐私友好的临时邮箱：无需注册、自定义有效期、支持多域名、邮件沙箱渲染、到期自动销毁。">
+<meta name="theme-color" content="#ffffff">
+<link rel="canonical" href="https://fademail.example.com/">
+<meta property="og:title" content="FadeMail · 临时邮箱">
+<meta property="og:description" content="无需注册的临时邮箱，到期自动销毁邮箱与全部邮件。">
+<meta property="og:url" content="https://fademail.example.com/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234d6bfe'/%3E%3Cpath d='M7 11.5h18v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='m7.5 12 8.5 6 8.5-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3.5"/><path d="m3.6 7.2 7.2 5.2a2 2 0 0 0 2.4 0l7.2-5.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.6"/><path d="M5.5 15.2V5.4A1.4 1.4 0 0 1 6.9 4h9.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.8 4.4 4.4L19 7.6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V5.2h5V7M6.6 7l.8 12.1a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9L17.4 7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3 1.9"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20.2 4.2v4.6h-4.6"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6.4 9.4a5.6 5.6 0 1 1 11.2 0c0 3.7 1.4 5.1 1.4 5.1H5s1.4-1.4 1.4-5.1"/><path d="M10 17.6a2.1 2.1 0 0 0 4 0"/></symbol>
+  <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M6.4 9.4a5.6 5.6 0 0 1 8.9-4.6"/><path d="M17.6 10.5c0 2.9 1.4 4 1.4 4H9"/><path d="M10 17.6a2.1 2.1 0 0 0 4 0"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5 7.5 12l7 7"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4.5v10m0 0 3.8-3.8M12 14.5 8.2 10.7M4.8 19.2h14.4"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8.2" cy="11.8" r="3.8"/><path d="M11.6 10.4 19.6 2.4M16.4 5.6l2.4 2.4M13.9 8.1l2.4 2.4"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 7.2 4.6 12 9 16.8M15 7.2 19.4 12 15 16.8"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="M8.4 12.4V7.6a3.6 3.6 0 0 1 7.2 0v9.2a2.6 2.6 0 0 1-5.2 0V8.6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"/><path d="M12 2.8v2.2m0 14v2.2M3.8 12H6m12 0h2.2M6.2 6.2l1.6 1.6m8.4 8.4 1.6 1.6m0-11.6-1.6 1.6m-8.4 8.4-1.6 1.6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.6v2.2m0 14.4v2.2M2.6 12h2.2m14.4 0h2.2M5.2 5.2l1.6 1.6m10.4 10.4 1.6 1.6m0-13.6-1.6 1.6M6.8 17.2l-1.6 1.6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.2 14.8A8.4 8.4 0 0 1 9.2 3.8a8.4 8.4 0 1 0 11 11Z"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.2" width="14" height="9.8" rx="2.6"/><path d="M8.6 10.2V7.8a3.4 3.4 0 0 1 6.8 0v2.4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 19 6v5.6c0 4.1-2.9 7.6-7 8.9-4.1-1.3-7-4.8-7-8.9V6Z"/><path d="m9.2 11.8 2 2 3.6-3.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><path d="m16 16 4.4 4.4"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4.6 19.4h3.2L19.2 8.2a2.1 2.1 0 0 0 0-3l-.4-.4a2.1 2.1 0 0 0-3 0L4.6 16.2Z"/><path d="M14.4 6.2 17.8 9.6"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5.4" width="18" height="13.2" rx="3"/><path d="m4 7.4 7 5a2 2 0 0 0 2 0l7-5"/></symbol>
+  <symbol id="i-mail-open" viewBox="0 0 24 24"><path d="M3 10.2 12 4l9 6.2v9.2a1.6 1.6 0 0 1-1.6 1.6H4.6A1.6 1.6 0 0 1 3 19.4Z"/><path d="m3.6 10.6 8.4 5.8 8.4-5.8"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.6" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="18.4" cy="12" r="1.3" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M13.6 4.6h5.8v5.8M19 5 11.4 12.6"/><path d="M18.4 14.2v4.2a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 18.4V6.6A1.6 1.6 0 0 1 5.6 5H10"/></symbol>
+  <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" stroke="none" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.6 12S6 6.4 12 6.4 21.4 12 21.4 12 18 17.6 12 17.6 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4.2 8.4C3.2 9.6 2.6 12 2.6 12s3.4 5.6 9.4 5.6c1.5 0 2.8-.4 4-1"/><path d="M9.1 6.9A9.6 9.6 0 0 1 12 6.4c6 0 9.4 5.6 9.4 5.6a17 17 0 0 1-3.3 3.6"/><path d="M10.1 10.1a2.8 2.8 0 0 0 3.8 3.8"/><path d="M3.4 3.4l17.2 17.2"/></symbol>
+  <symbol id="i-unread" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3.4 13.4 6 5.6A2 2 0 0 1 7.9 4.2h8.2A2 2 0 0 1 18 5.6l2.6 7.8v4.4a2 2 0 0 1-2 2H5.4a2 2 0 0 1-2-2Z"/><path d="M3.4 13.4h4.4l1.2 2.4h6l1.2-2.4h4.4"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10.4 4 4 4-4"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.4"/><circle cx="9" cy="9.4" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="14.6" r="1.15" fill="currentColor" stroke="none"/><circle cx="15" cy="9.4" r="1.15" fill="currentColor" stroke="none"/><circle cx="9" cy="14.6" r="1.15" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.2 13.7 9l5.8 1.7-5.8 1.7L12 18.2l-1.7-5.8L4.5 10.7 10.3 9Z"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <a class="brand" href="/" title="FadeMail">
+        <span class="brand-logo"><svg><use href="#i-logo"/></svg></span>
+        <span class="brand-name" id="brand-name">FadeMail</span>
+      </a>
+      <button class="icon-btn" id="btn-collapse" title="收起侧边栏"><svg><use href="#i-back"/></svg></button>
+    </div>
+
+    <button class="new-btn" id="btn-new">
+      <svg><use href="#i-plus"/></svg><span>新建临时邮箱</span>
+    </button>
+
+    <div class="sb-scroll">
+      <div class="sb-label"><span>我的邮箱</span><span class="sb-count" id="saved-count" hidden>0</span></div>
+      <ul class="mb-list" id="saved-list"></ul>
+      <p class="sb-empty" id="saved-empty">暂无邮箱<br><span>创建后会保存在本机浏览器</span></p>
+    </div>
+
+    <div class="sb-bottom">
+      <button class="sb-item" data-act="recover"><svg><use href="#i-key"/></svg><span>找回邮箱</span></button>
+      <button class="sb-item" data-act="api"><svg><use href="#i-code"/></svg><span>开放 API</span></button>
+      <button class="sb-item" data-act="settings"><svg><use href="#i-gear"/></svg><span>设置</span></button>
+      <div class="sb-user">
+        <span class="status"><i id="status-dot"></i><span id="sb-status">已连接</span></span>
+        <button class="icon-btn" id="btn-theme" title="切换主题">
+          <svg class="ic-sun"><use href="#i-sun"/></svg>
+          <svg class="ic-moon"><use href="#i-moon"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sb-mask" id="sb-mask" hidden></div>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn lg mobile-only" id="btn-menu" aria-label="打开侧边栏"><svg><use href="#i-menu"/></svg></button>
+      <button class="icon-btn lg desktop-only" id="btn-expand" aria-label="展开侧边栏"><svg><use href="#i-menu"/></svg></button>
+
+      <div class="addr-box" id="addr-box" hidden>
+        <button class="addr" id="addr-btn" title="点击复制地址">
+          <span id="addr-text">—</span>
+          <svg class="ic-copy"><use href="#i-copy"/></svg>
+          <svg class="ic-done"><use href="#i-check"/></svg>
+        </button>
+        <span class="state-pill" id="state-pill"><i></i>生效中</span>
+        <span class="left-time" id="left-time"></span>
+      </div>
+
+      <div class="top-actions">
+        <button class="icon-btn lg" id="btn-refresh" title="刷新（快捷键 R）"><svg><use href="#i-refresh"/></svg></button>
+        <button class="icon-btn lg" id="btn-bell" title="桌面通知"><svg><use href="#i-bell-off"/></svg></button>
+        <button class="icon-btn lg" id="btn-more" title="邮箱操作" hidden><svg><use href="#i-more"/></svg></button>
+      </div>
+    </header>
+
+    <div class="menu" id="more-menu" hidden>
+      <button data-act="extend"><svg><use href="#i-clock"/></svg>延长有效期</button>
+      <button data-act="note"><svg><use href="#i-edit"/></svg>修改备注</button>
+      <button data-act="password"><svg><use href="#i-lock"/></svg>找回密码</button>
+      <button data-act="read-all"><svg><use href="#i-mail-open"/></svg>全部标为已读</button>
+      <button data-act="clear"><svg><use href="#i-inbox"/></svg>清空收件箱</button>
+      <hr>
+      <button data-act="forget"><svg><use href="#i-close"/></svg>从列表移除</button>
+      <button class="danger" data-act="burn"><svg><use href="#i-trash"/></svg>销毁邮箱</button>
+    </div>
+
+    <div class="content" id="content">
+      <div class="boot-error" id="boot-error" hidden>页面加载异常，请刷新重试</div>
+      <noscript>
+        <p class="boot-error">需要启用 JavaScript 才能使用 FadeMail。</p>
+      </noscript>
+      <section class="hero" id="hero">
+        <div class="hero-inner">
+          <div class="hero-logo"><svg><use href="#i-logo"/></svg></div>
+          <h1>你的临时邮箱<br>用完即焚</h1>
+          <p class="hero-sub">无需注册，到期自动清除邮箱与全部邮件</p>
+          <p class="hero-notice" id="hero-notice" hidden></p>
+          <div class="create-slot" id="create-slot"></div>
+          <div class="hero-trust">
+            <ul class="hero-points">
+              <li>
+                <span class="hp-ico"><svg><use href="#i-spark"/></svg></span>
+                <span class="hp-txt"><b>无需注册</b><em>打开即用，即刻生成</em></span>
+              </li>
+              <li>
+                <span class="hp-ico"><svg><use href="#i-shield"/></svg></span>
+                <span class="hp-txt"><b>隐私优先</b><em>脚本隔离、图片拦截</em></span>
+              </li>
+              <li>
+                <span class="hp-ico"><svg><use href="#i-clock"/></svg></span>
+                <span class="hp-txt"><b>到期即焚</b><em>过期自动清理</em></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="inbox" id="inbox" hidden>
+        <div class="inbox-inner">
+          <div class="list-head">
+            <h2>收件箱<span class="soft" id="list-count"></span></h2>
+            <div class="list-tools">
+              <label class="search" id="search-box">
+                <svg><use href="#i-search"/></svg>
+                <input id="search-input" placeholder="搜索发件人、主题或正文" autocomplete="off" spellcheck="false">
+                <button type="button" class="search-clear" id="search-clear" hidden aria-label="清除"><svg><use href="#i-close"/></svg></button>
+              </label>
+            </div>
+          </div>
+
+          <div class="tabs" id="tabs">
+            <button class="tab on" data-filter="all">全部</button>
+            <button class="tab" data-filter="unread">未读<span class="tab-num" id="tab-unread" hidden>0</span></button>
+            <span class="tabs-spacer"></span>
+            <button class="ghost-btn" id="btn-read-all" data-act="read-all"><svg><use href="#i-check"/></svg>全部已读</button>
+          </div>
+
+          <div class="mail-list" id="mail-list"></div>
+        </div>
+      </section>
+
+      <section class="reader" id="reader" hidden></section>
+    </div>
+  </main>
+</div>
+
+<div class="modal-root" id="modal-root" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <header class="modal-head">
+      <h3 id="modal-title">标题</h3>
+      <button class="icon-btn" data-close aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+    </header>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>

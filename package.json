@@ -1,0 +1,39 @@
+{
+  "name": "fademail",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FadeMail —— 部署在 Cloudflare Workers 上的临时邮箱服务",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "deploy": "node scripts/with-config.mjs deploy",
+    "db:init": "wrangler d1 execute fademail --local --file=schema.sql",
+    "db:init:remote": "node scripts/with-config.mjs d1 execute fademail --remote --file=schema.sql -y",
+    "tail": "node scripts/with-config.mjs tail",
+    "test:email": "node scripts/send-test-email.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "pref:setup": "node scripts/setup-preference.mjs",
+    "email:setup": "node scripts/setup-email-routing.mjs"
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "temp-mail",
+    "disposable-email",
+    "d1",
+    "email-routing"
+  ],
+  "author": "QeeoDev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QeeoDev/fademail.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "postal-mime": "^4.2.1",
+    "wrangler": "^4.162.0"
+  }
+}

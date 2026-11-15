@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FadeMail · 管理后台</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%234d6bfe'/%3E%3Cpath d='M7 11.5h18v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='m7.5 12 8.5 6 8.5-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/admin.css">
+</head>
+<body class="admin">
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="3.5"/><path d="m3.6 7.2 7.2 5.2a2 2 0 0 0 2.4 0l7.2-5.2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9M20.2 4.2v4.6h-4.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"/><path d="m16 16 4.4 4.4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V5.2h5V7M6.6 7l.8 12.1a1 1 0 0 0 1 .9h7.2a1 1 0 0 0 1-.9L17.4 7"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3 1.9"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8.2" cy="11.8" r="3.8"/><path d="M11.6 10.4 19.6 2.4M16.4 5.6l2.4 2.4M13.9 8.1l2.4 2.4"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.8 4.4 4.4L19 7.6"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 19 6v5.6c0 4.1-2.9 7.6-7 8.9-4.1-1.3-7-4.8-7-8.9V6Z"/><path d="m9.2 11.8 2 2 3.6-3.6"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M13.6 4.6h5.8v5.8M19 5 11.4 12.6"/><path d="M18.4 14.2v4.2a1.6 1.6 0 0 1-1.6 1.6H5.6A1.6 1.6 0 0 1 4 18.4V6.6A1.6 1.6 0 0 1 5.6 5H10"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5.4" width="18" height="13.2" rx="3"/><path d="m4 7.4 7 5a2 2 0 0 0 2 0l7-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.6v2.2m0 14.4v2.2M2.6 12h2.2m14.4 0h2.2M5.2 5.2l1.6 1.6m10.4 10.4 1.6 1.6m0-13.6-1.6 1.6M6.8 17.2l-1.6 1.6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.2 14.8A8.4 8.4 0 0 1 9.2 3.8a8.4 8.4 0 1 0 11 11Z"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.6 12S6 6.4 12 6.4 21.4 12 21.4 12 18 17.6 12 17.6 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M4.2 8.4C3.2 9.6 2.6 12 2.6 12s3.4 5.6 9.4 5.6c1.5 0 2.8-.4 4-1"/><path d="M9.1 6.9A9.6 9.6 0 0 1 12 6.4c6 0 9.4 5.6 9.4 5.6a17 17 0 0 1-3.3 3.6"/><path d="M10.1 10.1a2.8 2.8 0 0 0 3.8 3.8"/><path d="M3.4 3.4l17.2 17.2"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14.4 5.6H6.6A1.6 1.6 0 0 0 5 7.2v9.6a1.6 1.6 0 0 0 1.6 1.6h7.8"/><path d="M17.4 8.6 20.8 12l-3.4 3.4M10.6 12h10"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 5 7.5 12l7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9.5 5l7 7-7 7"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.6 12S6 6.4 12 6.4 21.4 12 21.4 12 18 17.6 12 17.6 2.6 12 2.6 12Z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8M12 3.6c2.2 2.3 3.3 5.3 3.3 8.4s-1.1 6.1-3.3 8.4c-2.2-2.3-3.3-5.3-3.3-8.4S9.8 5.9 12 3.6Z"/></symbol>
+  <symbol id="i-broom" viewBox="0 0 24 24"><path d="M14.4 4.6 19.4 9.6M9.6 19.4l-5-5 6.4-6.4 5 5-6.4 6.4Z"/><path d="m4.6 19.4 1.4-1.4"/></symbol>
+</svg>
+
+<div class="ad-shell">
+  <header class="ad-top">
+    <div class="brand">
+      <span class="brand-logo"><svg><use href="#i-logo"/></svg></span>
+      <span>FadeMail</span>
+      <span class="tag">管理后台</span>
+    </div>
+    <div class="grow"></div>
+    <button class="icon-btn" id="btn-refresh" title="刷新数据"><svg><use href="#i-refresh"/></svg></button>
+    <button class="icon-btn" id="btn-theme" title="切换主题">
+      <svg class="ic-sun"><use href="#i-sun"/></svg>
+      <svg class="ic-moon"><use href="#i-moon"/></svg>
+    </button>
+    <button class="btn outline sm" id="btn-logout" hidden><svg><use href="#i-logout"/></svg>退出</button>
+  </header>
+
+  <main class="ad-main">
+    <section class="ad-login" id="login-view">
+      <noscript>
+        <div class="card"><h1>需要启用 JavaScript</h1><p>管理后台依赖浏览器脚本，请在浏览器设置里允许 JavaScript 后刷新。</p></div>
+      </noscript>
+      <div class="card" id="login-card" hidden>
+        <h1>管理登录</h1>
+        <form id="login-form">
+          <div class="field">
+            <label class="field-label" for="login-user">账号</label>
+            <input id="login-user" type="text" autocomplete="username" placeholder="请输入管理员账号" autofocus required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="login-pass">密码</label>
+            <div class="pw">
+              <input id="login-pass" type="password" autocomplete="current-password" placeholder="请输入登录密码" required>
+              <button type="button" class="pw-eye" tabindex="-1" aria-label="显示密码"><svg><use href="#i-eye"/></svg></button>
+            </div>
+          </div>
+          <button class="btn primary block" type="submit" id="login-btn">登录</button>
+        </form>
+        <div class="hint" id="login-error" hidden></div>
+      </div>
+      <div class="card" id="boot-card">
+        <h1>正在载入管理后台…</h1>
+        <p>如果长时间没有反应，请刷新页面；仍打不开时请确认访问的是正确的站点地址。</p>
+      </div>
+    </section>
+
+    <section id="dash-view" hidden>
+      <nav class="ad-tabs" id="tabs">
+        <button class="ad-tab on" data-tab="overview">总览</button>
+        <button class="ad-tab" data-tab="mailboxes">邮箱</button>
+        <button class="ad-tab" data-tab="domains">域名</button>
+        <button class="ad-tab" data-tab="keys">API Key</button>
+        <button class="ad-tab" data-tab="events">活动</button>
+        <button class="ad-tab" data-tab="settings">设置</button>
+      </nav>
+      <div id="panel"></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal-root"></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="/admin.js" type="module"></script>
+</body>
+</html>

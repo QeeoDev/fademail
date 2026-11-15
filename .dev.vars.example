@@ -1,0 +1,4 @@
+# 本地开发环境变量模板：复制为 .dev.vars（wrangler dev 自动加载，不会部署到线上）
+# 线上通过 Worker Secret 配置：npx wrangler secret put SITE_PASSWORD
+# 注意：不配置 SITE_PASSWORD 时，线上全站会 503 锁死（fail closed）
+SITE_PASSWORD=123456

@@ -1,0 +1,14 @@
+node_modules/
+.env
+.dev.vars
+.wrangler/
+dist/
+*.log
+.DS_Store
+.playwright-cli/
+shot-*.png
+.workbuddy/
+
+# 私有部署配置（真实域名 / 数据库 ID），不入库
+wrangler.local.jsonc
+wrangler.deploy.jsonc
