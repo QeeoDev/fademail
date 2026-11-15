@@ -52,7 +52,7 @@ const state = {
 /* -------------------------------- 基础工具 -------------------------------- */
 
 const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -127,9 +127,10 @@ function toast(msg, type = '') {
  * timeout 保证请求不会无限挂着。
  */
 async function api(path, { method = 'GET', body, timeout = 15000, key } = {}) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeout);
-  const secret = key === undefined ? (state.mailbox?.accessKey || '') : key;
+  // 老内核没有 AbortController：只是失去"超时中止"能力，请求本身照常工作
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeout) : null;
+  const secret = key === undefined ? ((state.mailbox && state.mailbox.accessKey) || '') : key;
   const headers = {};
   if (body) headers['content-type'] = 'application/json';
   if (secret) headers['x-mailbox-key'] = secret;
@@ -139,15 +140,15 @@ async function api(path, { method = 'GET', body, timeout = 15000, key } = {}) {
       method,
       headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
-      signal: ctrl.signal,
+      signal: ctrl ? ctrl.signal : undefined,
     });
   } catch (e) {
-    throw Object.assign(new Error(e.name === 'AbortError' ? '请求超时，请稍后重试' : '网络连接失败，请检查网络'), { status: 0 });
+    throw Object.assign(new Error(e && e.name === 'AbortError' ? '请求超时，请稍后重试' : '网络连接失败，请检查网络'), { status: 0 });
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
   let data = {};
-  try { data = await res.json(); } catch { /* 非 JSON 响应 */ }
+  try { data = await res.json(); } catch (e) { /* 非 JSON 响应 */ }
   // 门禁 Cookie 失效：刷新让 Worker 直接展示输入密码页
   if (res.headers.get('x-fm-code') === 'gate-required') {
     location.reload();
@@ -163,7 +164,7 @@ async function copyText(text, tip = '已复制') {
   let ok = true;
   try {
     await navigator.clipboard.writeText(text);
-  } catch {
+  } catch (e) {
     try {
       const ta = document.createElement('textarea');
       ta.value = text;
@@ -173,7 +174,7 @@ async function copyText(text, tip = '已复制') {
       ta.select();
       ok = document.execCommand('copy');
       ta.remove();
-    } catch {
+    } catch (e) {
       ok = false;
     }
   }
@@ -187,19 +188,19 @@ const loadSaved = () => {
   try {
     const list = JSON.parse(localStorage.getItem(LS.saved) || '[]');
     return Array.isArray(list) ? list.filter((m) => m && m.id && m.address) : [];
-  } catch {
+  } catch (e) {
     return [];
   }
 };
 
 const saveSaved = (list) => {
-  try { localStorage.setItem(LS.saved, JSON.stringify(list.slice(0, MAX_SAVED))); } catch { /* 隐私模式下可能失败 */ }
+  try { localStorage.setItem(LS.saved, JSON.stringify(list.slice(0, MAX_SAVED))); } catch (e) { /* 隐私模式下可能失败 */ }
 };
 
 /** 读取本地保存的邮箱访问密钥 */
 function savedKey(id) {
   const hit = loadSaved().find((m) => m.id === id);
-  return hit?.key || '';
+  return (hit && hit.key) || '';
 }
 
 function upsertSaved(mb) {
@@ -237,7 +238,7 @@ function resetToIdle() {
   state.openMsg = null;
   state.sig = '';
   state.keyBlocked = false;
-  try { localStorage.removeItem(LS.active); } catch { /* ignore */ }
+  try { localStorage.removeItem(LS.active); } catch (e) { /* ignore */ }
 
   const next = pruneSaved().find((m) => (m.expiresAt || 0) * 1000 > Date.now());
   if (next) {
@@ -271,7 +272,7 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
   const meta = $('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#1b1c1e');
-  try { localStorage.setItem(LS.theme, theme); } catch { /* ignore */ }
+  try { localStorage.setItem(LS.theme, theme); } catch (e) { /* ignore */ }
 }
 
 function toggleTheme() {
@@ -342,7 +343,7 @@ function renderSidebar() {
   ul.innerHTML = list.map((m) => {
     const info = state.summary[m.id];
     const expired = (m.expiresAt || 0) * 1000 <= Date.now();
-    const unread = info?.unread || 0;
+    const unread = (info && info.unread) || 0;
     const [local, domain] = String(m.address).split('@');
     const status = expired ? '已过期' : `剩余 ${fmtLeft(m.expiresAt * 1000 - Date.now())}`;
     const on = m.id === state.activeId ? ' on' : '';
@@ -387,7 +388,7 @@ async function refreshSummary() {
     if (stale.length) dirty = true;
     if (dirty) saveSaved(list.filter((m) => !stale.some((s) => s.id === m.id)));
     renderSidebar();
-  } catch {
+  } catch (e) {
     /* 摘要失败不影响主流程 */
   }
 }
@@ -447,7 +448,7 @@ function createFormHTML() {
     <div class="create-adv" hidden>
       <div class="field">
         <label class="field-label">有效期（小时）</label>
-        <input type="number" name="ttlValue" min="1" max="${state.config?.maxTtl || 720}" value="${state.config?.defaultTtl || 24}" inputmode="numeric">
+        <input type="number" name="ttlValue" min="1" max="${(state.config && state.config.maxTtl) || 720}" value="${(state.config && state.config.defaultTtl) || 24}" inputmode="numeric">
       </div>
       <div class="field">
         <label class="field-label">备注 <em>可选</em></label>
@@ -476,10 +477,10 @@ function wireDomainPicker(form) {
   const btn = $('.dd-btn', dd);
   const menu = $('.dd-menu', dd);
   const label = $('[data-dd-label]', dd);
-  const domains = state.config?.domains || [];
+  const domains = (state.config && state.config.domains) || [];
 
   let current = '';
-  try { current = localStorage.getItem(LS.domain) || ''; } catch { /* ignore */ }
+  try { current = localStorage.getItem(LS.domain) || ''; } catch (e) { /* ignore */ }
   if (!domains.includes(current)) current = domains[0] || '';
 
   const sync = () => {
@@ -513,7 +514,8 @@ function wireDomainPicker(form) {
     dd.classList.add('open');
     menu.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
-    $('button[data-v].on', menu)?.scrollIntoView({ block: 'nearest' });
+    const activeOpt = $('button[data-v].on', menu);
+    if (activeOpt) activeOpt.scrollIntoView({ block: 'nearest' });
   };
 
   btn.addEventListener('click', (e) => {
@@ -526,7 +528,7 @@ function wireDomainPicker(form) {
     const opt = e.target.closest('button[data-v]');
     if (!opt) return;
     current = opt.dataset.v;
-    try { localStorage.setItem(LS.domain, current); } catch { /* ignore */ }
+    try { localStorage.setItem(LS.domain, current); } catch (e) { /* ignore */ }
     sync();
     close();
   });
@@ -555,7 +557,7 @@ function wireCreateForm(root) {
   const errBox = $('[data-error]', form);
   const ttlInput = $('[name="ttlValue"]', form);
   const chipBtns = $$('button[data-ttl]', chips);
-  const defaultTtl = state.config?.defaultTtl || 24;
+  const defaultTtl = (state.config && state.config.defaultTtl) || 24;
 
   /** 芯片和输入框是同一个值：选中的小时数要回填到输入框，两处永远一致 */
   const applyTtl = (hours) => {
@@ -587,7 +589,7 @@ function wireCreateForm(root) {
     adv.hidden = false;
     toggle.classList.add('open');
     ttlInput.focus();
-    try { ttlInput.select(); } catch { /* number 输入框可能不支持全选 */ }
+    try { ttlInput.select(); } catch (e) { /* number 输入框可能不支持全选 */ }
   });
 
   // 手动填了小时数就自动切到「自定义」，同时清掉预设芯片的高亮
@@ -722,7 +724,7 @@ function emptyHTML(kind) {
     <div class="empty-art"><svg><use href="#i-inbox"/></svg></div>
     <h3>等待第一封邮件</h3>
     <p>将下面的地址填入需要验证的网站，新邮件会自动显示在这里。</p>
-    <div class="empty-addr"><code>${esc(mb?.address || '')}</code></div>
+    <div class="empty-addr"><code>${esc((mb && mb.address) || '')}</code></div>
     <button class="btn outline sm" data-act="copy-addr" style="margin-top:12px">复制邮箱地址</button>
   </div>`;
 }
@@ -732,7 +734,7 @@ function highlight(text, q) {
   if (!q) return safe;
   try {
     return safe.replace(new RegExp(`(${reEsc(esc(q))})`, 'gi'), '<mark>$1</mark>');
-  } catch {
+  } catch (e) {
     return safe;
   }
 }
@@ -820,7 +822,7 @@ function adoptMailbox(mb) {
   if (input) input.value = '';
   $('#search-clear').hidden = true;
   $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.filter === 'all'));
-  try { localStorage.setItem(LS.active, mb.id); } catch { /* ignore */ }
+  try { localStorage.setItem(LS.active, mb.id); } catch (e) { /* ignore */ }
   upsertSaved(mb);
   $('#content').scrollTop = 0;
   renderTop();
@@ -920,7 +922,7 @@ async function poll(force = false) {
 
 function frameSrc(msg) {
   const theme = document.documentElement.dataset.theme;
-  const key = state.mailbox?.accessKey || '';
+  const key = (state.mailbox && state.mailbox.accessKey) || '';
   const q = `theme=${theme}&img=${state.showImages ? 1 : 0}`;
   return `/api/messages/${encodeURIComponent(msg.id)}/html?${q}${key ? `&k=${encodeURIComponent(key)}` : ''}`;
 }
@@ -1054,7 +1056,7 @@ function renderReader() {
     </p>
 
     ${atts.length ? `<div class="attachments">${atts.map((a) => `
-      <a class="att" href="/api/attachments/${esc(a.id)}${state.mailbox?.accessKey ? `?k=${encodeURIComponent(state.mailbox.accessKey)}` : ''}" download="${esc(a.filename)}">
+      <a class="att" href="/api/attachments/${esc(a.id)}${state.mailbox && state.mailbox.accessKey ? `?k=${encodeURIComponent(state.mailbox.accessKey)}` : ''}" download="${esc(a.filename)}">
         <svg><use href="#i-download"/></svg>
         <span>${esc(a.filename)}</span>
         <small>${a.truncated ? '未保存' : fmtSize(a.size)}</small>
@@ -1103,9 +1105,11 @@ function renderReader() {
     }
   });
 
-  $('#v-copy-code')?.addEventListener('click', () => copyText(msg.code, '验证码已复制'));
+  const vCopyCode = $('#v-copy-code');
+  if (vCopyCode) vCopyCode.addEventListener('click', () => copyText(msg.code, '验证码已复制'));
 
-  $('#v-img')?.addEventListener('click', (e) => {
+  const vImgBtn = $('#v-img');
+  if (vImgBtn) vImgBtn.addEventListener('click', (e) => {
     state.showImages = !state.showImages;
     localStorage.setItem(LS.images, state.showImages ? '1' : '0');
     e.currentTarget.classList.toggle('on', state.showImages);
@@ -1120,14 +1124,16 @@ function renderReader() {
     applyFrame();
   });
 
-  $('#v-mode')?.addEventListener('click', (e) => {
+  const vModeBtn = $('#v-mode');
+  if (vModeBtn) vModeBtn.addEventListener('click', (e) => {
     state.textMode = !state.textMode;
     e.currentTarget.classList.toggle('on', state.textMode);
     $('span', e.currentTarget).textContent = state.textMode ? 'HTML' : '纯文本';
     applyFrame();
   });
 
-  $('#v-headers')?.addEventListener('click', (e) => {
+  const vHeadersBtn = $('#v-headers');
+  if (vHeadersBtn) vHeadersBtn.addEventListener('click', (e) => {
     const el = $('#v-headers-box');
     if (!el) return toast('这封邮件没有可显示的头部信息');
     el.hidden = !el.hidden;
@@ -1188,7 +1194,7 @@ async function clearInbox() {
 
 function openExtend() {
   if (!state.mailbox) return;
-  const maxTtl = state.config?.maxTtl || 720;
+  const maxTtl = (state.config && state.config.maxTtl) || 720;
   openModal('延长有效期', `
     <p class="form-note">当前到期时间：<b>${fmtDate(state.mailbox.expiresAt)}</b><br>
       延长后会以原到期时间（或现在，取较晚者）为起点顺延，最长不超过 ${Math.round(maxTtl / 24)} 天。</p>
@@ -1308,7 +1314,7 @@ function openPassword() {
     try {
       await api(`/api/mailboxes/${encodeURIComponent(state.mailbox.id)}/password`, {
         method: 'POST',
-        body: { password, current: $('#pw-current')?.value || undefined },
+        body: { password, current: (($('#pw-current') || {}).value || undefined) },
       });
       state.mailbox = { ...state.mailbox, hasPassword: !!password };
       upsertSaved(state.mailbox);
@@ -1327,7 +1333,8 @@ function openPassword() {
     if (pw.length < 6) return toast('找回密码至少 6 位', 'err');
     submit(pw);
   });
-  $('#pw-clear')?.addEventListener('click', () => submit(''));
+  const pwClearBtn = $('#pw-clear');
+  if (pwClearBtn) pwClearBtn.addEventListener('click', () => submit(''));
   $('#pw-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#pw-ok').click(); });
   ($('#pw-current') || $('#pw-new')).focus();
 }
@@ -1351,7 +1358,7 @@ async function burnMailbox() {
     state.openId = null;
     state.openMsg = null;
     state.sig = '';
-    try { localStorage.removeItem(LS.active); } catch { /* ignore */ }
+    try { localStorage.removeItem(LS.active); } catch (e) { /* ignore */ }
     renderTop();
     renderPanels();
     toast('邮箱已销毁', 'ok');
@@ -1500,7 +1507,7 @@ function openSettings() {
             : '新建邮箱默认开启，密钥只存在本机浏览器'
         }</div>
       </div>
-      <span class="st-badge${state.mailbox?.accessKey ? ' ok' : ''}">${state.mailbox?.accessKey ? '已保护' : '未保护'}</span>
+      <span class="st-badge${state.mailbox && state.mailbox.accessKey ? ' ok' : ''}">${state.mailbox && state.mailbox.accessKey ? '已保护' : '未保护'}</span>
     </div>
     <div class="setting-row">
       <div class="st-main">
@@ -1549,7 +1556,8 @@ async function handleSettingsClick(e) {
       toggleTheme();
       const dark = document.documentElement.dataset.theme === 'dark';
       sw.classList.toggle('on', dark);
-      const desc = sw.closest('.setting-row')?.querySelector('.st-desc');
+      const stRow = sw.closest('.setting-row');
+      const desc = stRow ? stRow.querySelector('.st-desc') : null;
       if (desc) desc.textContent = `当前：${dark ? '深色' : '浅色'}`;
     }
     return;
@@ -1587,7 +1595,8 @@ async function handleSettingsClick(e) {
 
 function openApiDocs() {
   const origin = location.origin;
-  const domain = state.config?.domains?.[0] || 'example.com';
+  const cfg = state.config || {};
+  const domain = (cfg.domains && cfg.domains[0]) || 'example.com';
   openModal('开放 API', `
     <div class="md">
       <p>基于 REST，返回 JSON。带 <code>/v1</code> 的接口需要 API Key；其余为前端自用接口。</p>
@@ -1625,13 +1634,14 @@ function bindEvents() {
   $('#btn-new').addEventListener('click', () => {
     if (!state.mailbox && !$('#hero').hidden) {
       const input = $('#create-slot [name="local"]');
-      input?.focus();
+      if (input) input.focus();
       $('#content').scrollTop = 0;
       return;
     }
     openModal('新建临时邮箱', createFormHTML());
     wireCreateForm($('#modal-body'));
-    $('#modal-body [name="local"]')?.focus();
+    const modalLocal = $('#modal-body [name="local"]');
+    if (modalLocal) modalLocal.focus();
   });
 
   $('#btn-collapse').addEventListener('click', () => {
@@ -1685,7 +1695,8 @@ function bindEvents() {
         const show = input.type === 'password';
         input.type = show ? 'text' : 'password';
         eye.classList.toggle('on', show);
-        $('use', eye)?.setAttribute('href', show ? '#i-eye-off' : '#i-eye');
+        const useEl = $('use', eye);
+        if (useEl) useEl.setAttribute('href', show ? '#i-eye-off' : '#i-eye');
         eye.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
       }
       return;
@@ -1697,7 +1708,8 @@ function bindEvents() {
       dd.classList.remove('open');
       const menu = $('.dd-menu', dd);
       if (menu) menu.hidden = true;
-      $('.dd-btn', dd)?.setAttribute('aria-expanded', 'false');
+      const ddBtn = $('.dd-btn', dd);
+      if (ddBtn) ddBtn.setAttribute('aria-expanded', 'false');
     });
   });
 
@@ -1718,7 +1730,7 @@ function bindEvents() {
       return;
     }
     const act = e.target.closest('[data-act]');
-    if (act?.dataset.act === 'read-all') readAll();
+    if (act && act.dataset.act === 'read-all') readAll();
   });
 
   const search = $('#search-input');
@@ -1818,12 +1830,12 @@ async function init() {
     toast('无法连接服务端：' + err.message, 'err');
     state.config = { domains: [], ttls: [1, 6, 24, 168], defaultTtl: 24, maxTtl: 720 };
   }
-  $('#brand-name').textContent = state.config?.brand || 'FadeMail';
-  if (state.config?.brand) document.title = `${state.config.brand} · 临时邮箱`;
+  $('#brand-name').textContent = (state.config && state.config.brand) || 'FadeMail';
+  if (state.config && state.config.brand) document.title = `${state.config.brand} · 临时邮箱`;
 
   const notice = $('#hero-notice');
   if (notice) {
-    const text = String(state.config?.notice || '').trim();
+    const text = String((state.config && state.config.notice) || '').trim();
     notice.textContent = text;
     notice.hidden = !text;
   }
@@ -1865,9 +1877,13 @@ async function init() {
     poll();
   }, 6000);
 
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  // 老内核（Chrome < 74）的 MediaQueryList 没有 addEventListener，只有 addListener
+  const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+  const onSchemeChange = (e) => {
     if (!localStorage.getItem(LS.theme)) applyTheme(e.matches ? 'dark' : 'light');
-  });
+  };
+  if (mqDark.addEventListener) mqDark.addEventListener('change', onSchemeChange);
+  else if (mqDark.addListener) mqDark.addListener(onSchemeChange);
 }
 
 init().catch((err) => {

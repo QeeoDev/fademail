@@ -3,7 +3,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const ic = (name) => `<svg><use href="#i-${name}"/></svg>`;
 
@@ -79,12 +79,12 @@ function applyTheme(theme) {
   document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
   const meta = $('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#1b1c1e');
-  try { localStorage.setItem(LS_THEME, theme); } catch { /* ignore */ }
+  try { localStorage.setItem(LS_THEME, theme); } catch (e) { /* ignore */ }
 }
 
 function initTheme() {
   let saved = null;
-  try { saved = localStorage.getItem(LS_THEME); } catch { /* ignore */ }
+  try { saved = localStorage.getItem(LS_THEME); } catch (e) { /* ignore */ }
   if (saved === 'light' || saved === 'dark') return applyTheme(saved);
   applyTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 }
@@ -103,11 +103,11 @@ async function api(path, { method = 'GET', body, csrf = false } = {}) {
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'same-origin',
     });
-  } catch {
+  } catch (e) {
     throw new Error('网络连接失败');
   }
   let data = {};
-  try { data = await res.json(); } catch { /* 非 JSON */ }
+  try { data = await res.json(); } catch (e) { /* 非 JSON */ }
   // 站点门禁 Cookie 失效：刷新让 Worker 展示输入密码页（区别于后台登录态 401）
   if (res.headers.get('x-fm-code') === 'gate-required') {
     location.reload();
@@ -150,7 +150,8 @@ function showLogin() {
   if (boot) boot.hidden = true;
   const card = $('#login-card');
   if (card) card.hidden = false;
-  $('#login-user')?.focus();
+  const loginUser = $('#login-user');
+  if (loginUser) loginUser.focus();
 }
 
 function showDash() {
@@ -165,14 +166,15 @@ function renderBanner() {
   if (!host) return;
   const old = $('#dash-banner');
   if (old) old.remove();
-  if (!state.account?.mustChange) return;
+  if (!(state.account && state.account.mustChange)) return;
   const el = document.createElement('div');
   el.id = 'dash-banner';
   el.className = 'banner warn';
   el.innerHTML = `当前仍在使用初始密码，请前往 <b>设置</b> 修改账号与密码。
     <button class="btn outline sm" id="banner-goto">去修改</button>`;
   host.prepend(el);
-  $('#banner-goto')?.addEventListener('click', () => switchTab('settings'));
+  const gotoBtn = $('#banner-goto');
+  if (gotoBtn) gotoBtn.addEventListener('click', () => switchTab('settings'));
 }
 
 /* -------------------------------- 总览 ----------------------------------- */
@@ -407,7 +409,7 @@ function renderSettings() {
   const s = state.settings || {};
   const acc = state.account || {};
   const ttls = Array.isArray(s.ttls) ? s.ttls.join(', ') : '1, 6, 24, 168';
-  const domains = state.settingsDomains?.length
+  const domains = (state.settingsDomains && state.settingsDomains.length)
     ? state.settingsDomains.map((d) => `<span class="chip mono">@${esc(d)}</span>`).join(' ')
     : '<span class="muted">暂无可用域名</span>';
 
@@ -493,7 +495,7 @@ function renderSettings() {
 function renderPanel() {
   const panel = $('#panel');
   // 搜索框输入后重渲染会丢焦点，这里保留一下光标
-  const wasSearch = document.activeElement?.id === 'mb-search';
+  const wasSearch = document.activeElement && document.activeElement.id === 'mb-search';
   if (state.loading) panel.innerHTML = `<div class="card empty-line">加载中…</div>`;
   else if (state.tab === 'overview') panel.innerHTML = renderOverview();
   else if (state.tab === 'mailboxes') panel.innerHTML = renderMailboxes();
@@ -590,7 +592,7 @@ async function viewMailbox(id) {
         </div>`).join('')}</div>`
     : `<div class="empty-line">这个邮箱还没有收到邮件</div>`;
 
-  const total = b.messageCount ?? data.messages.length;
+  const total = b.messageCount != null ? b.messageCount : data.messages.length;
   const { root } = openModal(b.address, `
     <div class="toolbar" style="margin-bottom:14px">
       <span class="chip ${b.protected ? 'ok' : 'off'}">${b.protected ? '受保护' : '无密钥'}</span>
@@ -619,7 +621,7 @@ async function viewMessage(id) {
       <span class="chip">${fmtTime(message.receivedAt)}</span>
       ${message.hasHtml ? '<span class="chip ok">含 HTML</span>' : ''}
     </div>
-    ${message.attachments?.length ? `<div class="toolbar" style="margin-bottom:12px">${message.attachments.map((a) => `<span class="chip">${esc(a.filename)} · ${fmtSize(a.size)}</span>`).join('')}</div>` : ''}
+    ${message.attachments && message.attachments.length ? `<div class="toolbar" style="margin-bottom:12px">${message.attachments.map((a) => `<span class="chip">${esc(a.filename)} · ${fmtSize(a.size)}</span>`).join('')}</div>` : ''}
     <pre>${esc(message.text || '(无纯文本正文)')}</pre>
     ${headers ? `<h3 style="margin:16px 0 8px;font-size:13px">邮件头</h3><pre>${esc(headers)}</pre>` : ''}
   `);
@@ -681,7 +683,8 @@ function bindEvents() {
     const show = input.type === 'password';
     input.type = show ? 'text' : 'password';
     eye.classList.toggle('on', show);
-    $('use', eye)?.setAttribute('href', show ? '#i-eye-off' : '#i-eye');
+    const useEl = $('use', eye);
+    if (useEl) useEl.setAttribute('href', show ? '#i-eye-off' : '#i-eye');
     eye.setAttribute('aria-label', show ? '隐藏密码' : '显示密码');
   });
 
@@ -766,8 +769,8 @@ function bindEvents() {
       state.mailboxes.page = 1;
       reload();
     }
-    if (e.target.id === 'new-domain' && e.key === 'Enter') $('#add-domain')?.click();
-    if (e.target.id === 'new-key-name' && e.key === 'Enter') $('#add-key')?.click();
+    if (e.target.id === 'new-domain' && e.key === 'Enter') { const ad = $('#add-domain'); if (ad) ad.click(); }
+    if (e.target.id === 'new-key-name' && e.key === 'Enter') { const ak = $('#add-key'); if (ak) ak.click(); }
   });
 
   $('#panel').addEventListener('click', async (e) => {
@@ -892,7 +895,7 @@ function bindEvents() {
   });
 
   $('#btn-logout').addEventListener('click', async () => {
-    try { await api('/api/admin/logout', { method: 'POST', csrf: true }); } catch { /* ignore */ }
+    try { await api('/api/admin/logout', { method: 'POST', csrf: true }); } catch (e) { /* ignore */ }
     state.overview = null;
     showLogin();
     toast('已退出', 'ok');
@@ -916,7 +919,7 @@ async function boot() {
     showDash();
     await switchTab('overview');
     renderBanner();
-  } catch {
+  } catch (e) {
     // 未登录 / 会话过期：api() 内部已切到登录页
     showLogin();
   }

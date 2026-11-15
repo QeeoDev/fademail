@@ -1,4 +1,4 @@
-import { handleApi } from './api.js';
+import { handleApi } from './api/index.js';
 import { handleEmail } from './email.js';
 import { purgeExpired } from './lib.js';
 import { gateCheck } from './gate.js';
