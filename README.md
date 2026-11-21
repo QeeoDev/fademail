@@ -162,7 +162,8 @@ CF_EMAIL_TOKEN=xxx CF_DNS_TOKEN=xxx ZONE_ID=yyy \
 
 1. 首次打开自动创建管理员：**初始 `admin` / `123456`**，直接登录
 2. 登录后第一件事：去「设置」**改账号改密码**（要验证当前密码），别偷懒
-3. 同一页还能改站点名称、站点地址、有效期预设和首页提示，保存立即生效
+3. 同一页还能改站点名称、浏览器标题、站点图标 / 头像、站点地址、有效期预设和首页提示，保存立即生效
+4. 域名、活动记录、API Key 的「删除」都是真删除，没有吊销 / 停用的中间态
 
 密码 PBKDF2-SHA256 加盐存储；会话是 HttpOnly 签名 Cookie（12 小时）；
 写操作都要带 `x-admin-csrf` 头。命令行党也可以配 `ADMIN_TOKEN` 走令牌调接口。
@@ -186,7 +187,7 @@ CF_EMAIL_TOKEN=xxx CF_DNS_TOKEN=xxx ZONE_ID=yyy \
 
 | Secret | 必需？ | 说明 |
 |--------|--------|------|
-| `SITE_PASSWORD` | 推荐 | 全站门禁密码；**不配置时整站 503 锁死**——宁可装死也不裸奔。本地开发写在 `.dev.vars`，默认 `123456` |
+| `SITE_PASSWORD` | 推荐 | 全站门禁密码；**不配置时整站 503 锁死**——宁可装死也不裸奔。带 API Key 的 `/api/v1/*` 请求不需要门禁 Cookie，密钥由开放接口自己校验。本地开发写在 `.dev.vars`，默认 `123456` |
 | `RECOVERY_SECRET` | ⚪ | 找回密码的 HMAC 指纹密钥；不配则首次使用自动生成并写入 D1 |
 | `ADMIN_TOKEN` | ⚪ | 命令行调管理接口的令牌；不配也能用后台账号密码 |
 
@@ -271,7 +272,8 @@ scripts/        收信配置 / 优选加速 / 测试与冒烟脚本
 
 ## 🔌 API
 
-**开放接口**（管理后台创建 Key，`Authorization: Bearer fm_xxx` 或 `X-API-Key`）：
+**开放接口**（管理后台创建 Key，`Authorization: Bearer fm_xxx` 或 `X-API-Key`；
+带密钥的请求直接放行，不必先过站点门禁——脚本调用不用再维护门禁 Cookie）：
 
 ```http
 GET    /api/v1/domains
@@ -298,7 +300,7 @@ DELETE /api/mailboxes/{id}               销毁邮箱
 
 **管理接口**（登录会话 Cookie 或 `x-admin-token`，写操作带 `x-admin-csrf: 1`）：
 `/api/admin/login|me|account|settings|overview|mailboxes|messages/{id}|events|domains|keys|purge`，
-细节直接看 `src/api.js`，每个路由都有注释。
+细节直接看 `src/api/`，每个路由都有注释。
 
 ---
 

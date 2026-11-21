@@ -13,7 +13,7 @@ export const TTL_PRESETS = [1, 6, 24, 168];
 
 /* -------------------------------- 站点配置 -------------------------------- */
 
-const SETTING_KEYS = ['brand', 'siteUrl', 'ttls', 'defaultTtl', 'maxTtl', 'notice'];
+const SETTING_KEYS = ['brand', 'title', 'logo', 'siteUrl', 'ttls', 'defaultTtl', 'maxTtl', 'notice'];
 
 /** 读取后台可编辑的站点配置（没写过的项回落到环境变量） */
 export async function readSettings(env) {

@@ -326,6 +326,7 @@ function renderDomains() {
           <div class="row-actions">
             <button class="btn outline sm" data-act="dom-default" data-domain="${esc(d.domain)}" ${d.is_default ? 'disabled' : ''}>设为默认</button>
             <button class="btn outline sm" data-act="dom-toggle" data-domain="${esc(d.domain)}" data-enabled="${d.enabled ? '0' : '1'}">${d.enabled ? '停用' : '启用'}</button>
+            <button class="btn danger sm" data-act="dom-del" data-domain="${esc(d.domain)}">${ic('trash')}删除</button>
           </div>
         </td>
       </tr>`).join('')
@@ -357,9 +358,9 @@ function renderKeys() {
         <td class="mono muted">${esc(k.prefix)}…</td>
         <td class="right">${k.calls || 0}</td>
         <td class="right muted nowrap">${k.last_used ? fmtAgo(k.last_used) : '从未'}</td>
-        <td>${k.revoked ? '<span class="chip off">已吊销</span>' : '<span class="chip ok">有效</span>'}</td>
+        <td>${k.revoked ? '<span class="chip off">已失效</span>' : '<span class="chip ok">有效</span>'}</td>
         <td><div class="row-actions">
-          ${k.revoked ? '' : `<button class="btn danger sm" data-act="key-del" data-id="${esc(k.id)}">吊销</button>`}
+          <button class="btn danger sm" data-act="key-del" data-id="${esc(k.id)}">${ic('trash')}删除</button>
         </div></td>
       </tr>`).join('')
     : `<tr><td colspan="6" class="empty-line">还没有 API Key</td></tr>`;
@@ -390,6 +391,7 @@ function renderEvents() {
         <span class="ref">${esc(e.ref || '—')}${e.detail ? ` · ${esc(e.detail)}` : ''}</span>
         <span class="ip">${esc(e.ip || '')}</span>
         <span class="time">${fmtTime(e.created_at)}</span>
+        <button class="icon-btn ev-del" data-act="event-del" data-id="${e.id}" title="删除这条记录" aria-label="删除这条记录">${ic('close')}</button>
       </div>`).join('')}</div>`
     : `<div class="empty-line">暂无活动</div>`;
   return `<div class="ad-section card" style="margin-top:0">
@@ -397,6 +399,7 @@ function renderEvents() {
       <h2>活动日志</h2>
       <span class="sub">最近 100 条</span>
       <span class="grow"></span>
+      <button class="btn danger sm" data-act="events-clear" ${state.events.length ? '' : 'disabled'}>${ic('trash')}清空</button>
       <button class="btn outline sm" data-act="events-reload">${ic('refresh')}刷新</button>
     </div>
     ${list}
@@ -405,10 +408,60 @@ function renderEvents() {
 
 /* -------------------------------- 设置页 --------------------------------- */
 
+/** 图标预览：data URI / 站内路径走图片，短文字走字符，空值用默认信封 */
+function logoPreviewHtml(raw) {
+  const v = String(raw || '').trim();
+  if (/^data:image\//.test(v) || /^\/[^\s"'<>]*$/.test(v)) return `<img src="${esc(v)}" alt="">`;
+  if (v) return `<span class="logo-char">${esc(v)}</span>`;
+  return '<svg><use href="#i-logo"/></svg>';
+}
+
+function currentLogo() {
+  const hidden = $('#st-logo');
+  if (hidden && hidden.value) return hidden.value;
+  const text = $('#st-logo-text');
+  return text ? text.value.trim() : '';
+}
+
+function syncLogoPreview() {
+  const box = $('#st-logo-preview');
+  if (box) box.innerHTML = logoPreviewHtml(currentLogo());
+}
+
+/** 本地把图片压成 128×128 的 PNG data URI，避免把大图写进 settings 表 */
+function readLogo(file, cb) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const size = 128;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.min(size / img.width, size / img.height);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        ctx.drawImage(img, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+        cb(canvas.toDataURL('image/png'));
+      } catch (err) {
+        cb(String(reader.result || ''));
+      }
+    };
+    img.onerror = () => toast('图片解析失败，请换一张', 'err');
+    img.src = String(reader.result || '');
+  };
+  reader.onerror = () => toast('读取图片失败', 'err');
+  reader.readAsDataURL(file);
+}
+
 function renderSettings() {
   const s = state.settings || {};
   const acc = state.account || {};
   const ttls = Array.isArray(s.ttls) ? s.ttls.join(', ') : '1, 6, 24, 168';
+  const logo = String(s.logo || '');
+  const logoIsImage = /^data:image\//.test(logo) || /^\/[^\s"'<>]*$/.test(logo);
   const domains = (state.settingsDomains && state.settingsDomains.length)
     ? state.settingsDomains.map((d) => `<span class="chip mono">@${esc(d)}</span>`).join(' ')
     : '<span class="muted">暂无可用域名</span>';
@@ -418,9 +471,27 @@ function renderSettings() {
       <h3>站点信息</h3>
       <p class="muted">这里的配置会覆盖环境变量，保存后前台立即生效。</p>
       <form id="site-form" class="ad-form">
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="st-brand">站点名称</label>
+            <input id="st-brand" name="brand" maxlength="32" value="${esc(s.brand || 'FadeMail')}" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="st-title">浏览器标题</label>
+            <input id="st-title" name="title" maxlength="60" value="${esc(s.title || '')}" placeholder="${esc((s.brand || 'FadeMail') + ' · 临时邮箱')}">
+          </div>
+        </div>
         <div class="field">
-          <label class="field-label" for="st-brand">站点名称</label>
-          <input id="st-brand" name="brand" maxlength="32" value="${esc(s.brand || 'FadeMail')}" required>
+          <label class="field-label" for="st-logo-text">站点图标 / 头像</label>
+          <div class="logo-row">
+            <span class="logo-preview" id="st-logo-preview">${logoPreviewHtml(logo)}</span>
+            <input id="st-logo-text" type="text" maxlength="8" value="${esc(logoIsImage ? '' : logo)}" placeholder="emoji 或 1-2 个字符" autocomplete="off">
+            <label class="btn outline sm" for="st-logo-file">选择图片</label>
+            <button type="button" class="btn outline sm" id="st-logo-clear">清除</button>
+          </div>
+          <input type="file" id="st-logo-file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+          <input type="hidden" id="st-logo" name="logo" value="${esc(logoIsImage ? logo : '')}">
+          <div class="ad-note">图片会自动压缩成 128×128，也可以填一个 emoji</div>
         </div>
         <div class="field">
           <label class="field-label" for="st-url">站点地址</label>
@@ -738,16 +809,64 @@ function bindEvents() {
         toast(enabled === '1' ? '已启用' : '已停用', 'ok');
         await reload();
       } catch (err) { toast(err.message, 'err'); }
+    } else if (name === 'dom-del') {
+      const tip = `删除域名 @${domain}？\n\n已创建的邮箱仍可继续收信，但新邮箱不能再使用该后缀。\n删除后无法恢复。`;
+      if (!window.confirm(tip)) return;
+      try {
+        const r = await api(`/api/admin/domains/${encodeURIComponent(domain)}`, { method: 'DELETE', csrf: true });
+        toast(r.mailboxes ? `已删除（${r.mailboxes} 个邮箱仍保留）` : '已删除', 'ok');
+        await reload();
+      } catch (err) { toast(err.message, 'err'); }
     } else if (name === 'key-del') {
-      if (!window.confirm('吊销后使用该密钥的请求会立即失败，确定吗？')) return;
+      if (!window.confirm('删除后使用该密钥的接口会立即失效，且无法恢复，确定吗？')) return;
       try {
         await api(`/api/admin/keys/${encodeURIComponent(id)}`, { method: 'DELETE', csrf: true });
-        toast('已吊销', 'ok');
+        toast('已删除', 'ok');
+        await reload();
+      } catch (err) { toast(err.message, 'err'); }
+    } else if (name === 'event-del') {
+      if (!window.confirm('删除这条活动记录？')) return;
+      try {
+        await api(`/api/admin/events/${encodeURIComponent(id)}`, { method: 'DELETE', csrf: true });
+        await reload();
+      } catch (err) { toast(err.message, 'err'); }
+    } else if (name === 'events-clear') {
+      if (!window.confirm('清空全部活动记录？此操作无法恢复。')) return;
+      try {
+        const r = await api('/api/admin/events', { method: 'DELETE', csrf: true });
+        toast(`已清空 ${r.removed || 0} 条记录`, 'ok');
         await reload();
       } catch (err) { toast(err.message, 'err'); }
     } else if (name === 'events-reload') {
       await reload();
     }
+  });
+
+  // 图标文字输入：清掉已选的图片，实时更新预览
+  $('#panel').addEventListener('input', (e) => {
+    if (e.target.id === 'st-logo-text') {
+      const hidden = $('#st-logo');
+      if (hidden) hidden.value = '';
+      syncLogoPreview();
+      return;
+    }
+  });
+
+  // 图标文件：本地压到 128×128 再写入隐藏字段
+  $('#panel').addEventListener('change', (e) => {
+    if (e.target.id !== 'st-logo-file') return;
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!/^image\//.test(file.type)) return toast('请选择图片文件', 'err');
+    if (file.size > 3 * 1024 * 1024) return toast('图片请小于 3MB', 'err');
+    readLogo(file, (dataUrl) => {
+      const hidden = $('#st-logo');
+      if (hidden) hidden.value = dataUrl;
+      const text = $('#st-logo-text');
+      if (text) text.value = '';
+      syncLogoPreview();
+    });
   });
 
   // 搜索（防抖）
@@ -775,6 +894,14 @@ function bindEvents() {
 
   $('#panel').addEventListener('click', async (e) => {
     if (e.target.closest('#mb-reload')) return reload();
+    if (e.target.closest('#st-logo-clear')) {
+      const hidden = $('#st-logo');
+      const text = $('#st-logo-text');
+      if (hidden) hidden.value = '';
+      if (text) text.value = '';
+      syncLogoPreview();
+      return;
+    }
     if (e.target.closest('#add-domain')) {
       const input = $('#new-domain');
       const domain = input.value.trim().toLowerCase();
@@ -814,11 +941,14 @@ function bindEvents() {
           .split(',')
           .map((v) => parseInt(v.trim(), 10))
           .filter((n) => Number.isFinite(n) && n > 0);
+        const titleEl = $('#st-title');
         const r = await api('/api/admin/settings', {
           method: 'PATCH',
           csrf: true,
           body: {
             brand: form.brand.value.trim(),
+            title: titleEl ? titleEl.value.trim() : '',
+            logo: currentLogo(),
             siteUrl: form.siteUrl.value.trim(),
             notice: form.notice.value.trim(),
             ttls,

@@ -177,6 +177,20 @@ add('PATCH', '/api/admin/account', async ({ request, env }) =>
 
 /* -------------------------------- 站点设置 -------------------------------- */
 
+/** 站点图标：data URI 图片 / 站内路径 / emoji 文字，三选一；返回 null 表示不合法 */
+const LOGO_DATA_RE = /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+const LOGO_PATH_RE = /^\/[^\s"'<>]{1,200}$/;
+
+function cleanLogo(v) {
+  const raw = String(v == null ? '' : v).trim();
+  if (!raw) return '';
+  if (raw.length > 160000) return null;
+  if (LOGO_DATA_RE.test(raw)) return raw;
+  if (LOGO_PATH_RE.test(raw)) return raw;
+  // 文字图标按码点截断，避免把 emoji 的代理对切成半个
+  return Array.from(cleanText(raw, 16)).slice(0, 4).join('');
+}
+
 add('GET', '/api/admin/settings', async ({ request, env }) =>
   adminGuard(request, env, async () => {
     const conf = await readSettings(env);
@@ -184,6 +198,8 @@ add('GET', '/api/admin/settings', async ({ request, env }) =>
       ok: true,
       settings: {
         brand: conf.brand || env.BRAND || 'FadeMail',
+        title: conf.title || '',
+        logo: conf.logo || '',
         siteUrl: conf.siteUrl || siteUrl(env, ''),
         notice: conf.notice || '',
         ttls: Array.isArray(conf.ttls) && conf.ttls.length ? conf.ttls : TTL_PRESETS,
@@ -205,6 +221,10 @@ add('PATCH', '/api/admin/settings', async ({ request, env }) =>
       const brand = cleanText(body.brand ?? current.brand ?? env.BRAND ?? 'FadeMail', 32);
       if (!brand) return fail('站点名称不能为空', 400);
 
+      const title = cleanText(body.title ?? current.title ?? '', 60);
+      const logo = cleanLogo(body.logo ?? current.logo ?? '');
+      if (logo === null) return fail('图标格式不正确，请上传 128×128 的位图或填写 1-8 个字符', 400);
+
       const rawUrl = String(body.siteUrl ?? current.siteUrl ?? siteUrl(env, '')).trim();
       if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(rawUrl)) return fail('站点地址需以 http(s):// 开头', 400);
       const cleanUrl = rawUrl.replace(/\/+$/, '');
@@ -223,6 +243,8 @@ add('PATCH', '/api/admin/settings', async ({ request, env }) =>
 
       await Promise.all([
         writeSetting(env, 'brand', brand),
+        writeSetting(env, 'title', title),
+        writeSetting(env, 'logo', logo),
         writeSetting(env, 'siteUrl', cleanUrl),
         writeSetting(env, 'maxTtl', maxTtl),
         writeSetting(env, 'ttls', JSON.stringify(ttls)),
@@ -232,7 +254,7 @@ add('PATCH', '/api/admin/settings', async ({ request, env }) =>
       await logEvent(env, 'admin.settings.update', brand, `ttls=${ttls.join('/')}`, clientIp(request));
       return json({
         ok: true,
-        settings: { brand, siteUrl: cleanUrl, notice, ttls, defaultTtl, maxTtl },
+        settings: { brand, title, logo, siteUrl: cleanUrl, notice, ttls, defaultTtl, maxTtl },
       });
     },
     { mutating: true },
@@ -459,6 +481,24 @@ add('GET', '/api/admin/events', async ({ request, env, url }) =>
     return json({ ok: true, events: rows.results });
   }));
 
+/** 删除单条活动记录（真删，不做软删） */
+add('DELETE', '/api/admin/events/:id', async ({ request, env, params }) =>
+  adminGuard(request, env, async () => {
+    const row = await env.DB.prepare('SELECT id FROM events WHERE id = ?').bind(params.id).first();
+    if (!row) return fail('记录不存在', 404);
+    await env.DB.prepare('DELETE FROM events WHERE id = ?').bind(row.id).run();
+    return json({ ok: true });
+  }, { mutating: true }));
+
+/** 清空全部活动记录 */
+add('DELETE', '/api/admin/events', async ({ request, env }) =>
+  adminGuard(request, env, async () => {
+    const r = await env.DB.prepare('DELETE FROM events').run();
+    const removed = r.meta?.changes || 0;
+    await logEvent(env, 'admin.events.clear', '', `removed=${removed}`, clientIp(request));
+    return json({ ok: true, removed });
+  }, { mutating: true }));
+
 add('GET', '/api/admin/keys', async ({ request, env }) =>
   adminGuard(request, env, async () => {
     const rows = await env.DB.prepare(
@@ -482,10 +522,13 @@ add('POST', '/api/admin/keys', async ({ request, env }) =>
     return json({ ok: true, id, name, key: raw, note: '请立即保存，此密钥仅显示一次' }, 201);
   }, { mutating: true }));
 
+/** 删除密钥：直接从库里删掉，不存在「吊销后仍留一条」的中间态 */
 add('DELETE', '/api/admin/keys/:id', async ({ request, env, params }) =>
   adminGuard(request, env, async () => {
-    await env.DB.prepare('UPDATE api_keys SET revoked = 1 WHERE id = ?').bind(params.id).run();
-    await logEvent(env, 'admin.key.revoke', params.id, '', clientIp(request));
+    const row = await env.DB.prepare('SELECT id, name FROM api_keys WHERE id = ?').bind(params.id).first();
+    if (!row) return fail('密钥不存在', 404);
+    await env.DB.prepare('DELETE FROM api_keys WHERE id = ?').bind(row.id).run();
+    await logEvent(env, 'admin.key.delete', row.name, row.id, clientIp(request));
     return json({ ok: true });
   }, { mutating: true }));
 
@@ -541,11 +584,26 @@ add('PATCH', '/api/admin/domains/:domain', async ({ request, env, params }) =>
     return json({ ok: true });
   }, { mutating: true }));
 
+/** 删除域名：真删记录；已建邮箱仍按地址收信，只是不能再新建该后缀的邮箱 */
 add('DELETE', '/api/admin/domains/:domain', async ({ request, env, params }) =>
   adminGuard(request, env, async () => {
-    await env.DB.prepare('UPDATE domains SET enabled = 0, is_default = 0 WHERE domain = ?').bind(params.domain).run();
-    await logEvent(env, 'admin.domain.disable', params.domain, '', clientIp(request));
-    return json({ ok: true });
+    const domain = cleanText(params.domain, 120).toLowerCase();
+    const row = await env.DB.prepare('SELECT * FROM domains WHERE domain = ?').bind(domain).first();
+    if (!row) return fail('域名不存在', 404);
+
+    await env.DB.prepare('DELETE FROM domains WHERE domain = ?').bind(domain).run();
+    // 删掉的正好是默认域名时，把最早添加的可用域名顶上去
+    if (row.is_default) {
+      const next = await env.DB.prepare(
+        'SELECT domain FROM domains WHERE enabled = 1 ORDER BY created_at ASC LIMIT 1',
+      ).first();
+      if (next) {
+        await env.DB.prepare('UPDATE domains SET is_default = 1 WHERE domain = ?').bind(next.domain).run();
+      }
+    }
+    const left = await env.DB.prepare('SELECT COUNT(*) AS n FROM mailboxes WHERE domain = ?').bind(domain).first();
+    await logEvent(env, 'admin.domain.delete', domain, `mailboxes=${left?.n || 0}`, clientIp(request));
+    return json({ ok: true, mailboxes: left?.n || 0 });
   }, { mutating: true }));
 
 add('POST', '/api/admin/purge', async ({ request, env }) =>

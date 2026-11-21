@@ -23,6 +23,8 @@ add('GET', '/api/config', async ({ env, url }) => {
   return json({
     ok: true,
     brand: conf.brand || env.BRAND || 'FadeMail',
+    title: conf.title || `${conf.brand || env.BRAND || 'FadeMail'} · 临时邮箱`,
+    logo: conf.logo || '',
     siteUrl: conf.siteUrl || siteUrl(env, url.origin),
     notice: conf.notice || '',
     domains,

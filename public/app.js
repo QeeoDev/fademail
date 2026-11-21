@@ -325,9 +325,58 @@ function notifyNew(list) {
   });
 }
 
+function siteTitle() {
+  const conf = state.config || {};
+  const custom = String(conf.title || '').trim();
+  if (custom) return custom;
+  return `${conf.brand || 'FadeMail'} · 临时邮箱`;
+}
+
 function updateTitle() {
   const unread = state.messages.filter((m) => !m.isRead).length;
-  document.title = unread > 0 ? `(${unread}) FadeMail · 临时邮箱` : 'FadeMail · 临时邮箱';
+  const base = siteTitle();
+  document.title = unread > 0 ? `(${unread}) ${base}` : base;
+}
+
+/** 站点图标：图片 / emoji 文字 / 默认信封 SVG 三选一 */
+function paintLogo(el, logo) {
+  if (!el) return;
+  const v = String(logo || '').trim();
+  if (/^data:image\//.test(v) || /^\/[^\s"'<>]*$/.test(v)) {
+    el.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = v;
+    img.alt = '';
+    el.appendChild(img);
+    return;
+  }
+  if (v) {
+    el.innerHTML = '<span class="logo-char"></span>';
+    const span = $('.logo-char', el);
+    if (span) span.textContent = v.slice(0, 8);
+    return;
+  }
+  el.innerHTML = '<svg><use href="#i-logo"/></svg>';
+}
+
+/** 把后台配置的站点名称 / 标题 / 图标应用到页面 */
+function applyBranding() {
+  const conf = state.config || {};
+  const logo = String(conf.logo || '');
+  const brand = String(conf.brand || 'FadeMail');
+  const nameEl = $('#brand-name');
+  if (nameEl) nameEl.textContent = brand;
+  const brandLink = $('.brand');
+  if (brandLink) brandLink.title = brand;
+  paintLogo($('.brand-logo'), logo);
+  paintLogo($('.hero-logo'), logo);
+  updateTitle();
+  if (/^data:image\//.test(logo)) {
+    const icon = $('link[rel="icon"]');
+    if (icon) icon.setAttribute('href', logo);
+  }
+  const og = $('meta[property="og:title"]');
+  if (og) og.setAttribute('content', siteTitle());
 }
 
 /* -------------------------------- 侧边栏 --------------------------------- */
@@ -1830,8 +1879,7 @@ async function init() {
     toast('无法连接服务端：' + err.message, 'err');
     state.config = { domains: [], ttls: [1, 6, 24, 168], defaultTtl: 24, maxTtl: 720 };
   }
-  $('#brand-name').textContent = (state.config && state.config.brand) || 'FadeMail';
-  if (state.config && state.config.brand) document.title = `${state.config.brand} · 临时邮箱`;
+  applyBranding();
 
   const notice = $('#hero-notice');
   if (notice) {

@@ -46,9 +46,23 @@ async function verifyToken(env, token) {
   return safeEqual(sig, want);
 }
 
+/**
+ * 开放 API：带密钥的请求不需要先过站点门禁。
+ * 密钥就是凭据，真正的校验由 /api/v1 自己完成（无效密钥照样 401）。
+ */
+const V1_PATH_RE = /^\/api\/v1(?:\/|$)/;
+
+function hasCredential(request) {
+  const auth = (request.headers.get('authorization') || '').trim();
+  if (/^bearer\s+\S/i.test(auth)) return true;
+  return !!(request.headers.get('x-api-key') || '').trim();
+}
+
 /** 门禁入口：返回 Response 表示拦截，返回 null 表示放行 */
 export async function gateCheck(request, env, url) {
   if (request.method === 'OPTIONS') return null; // CORS 预检不带凭据，放行
+
+  if (V1_PATH_RE.test(url.pathname) && hasCredential(request)) return null;
 
   if (!env.SITE_PASSWORD) {
     return new Response('Service temporarily unavailable', {

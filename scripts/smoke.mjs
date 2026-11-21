@@ -225,12 +225,53 @@ const run = async () => {
 
     const key = await req('/api/admin/keys', { method: 'POST', headers: { cookie, 'x-admin-csrf': '1' }, body: { name: 'smoke' } });
     check('后台可创建 API Key', key.status === 201 && /^fm_/.test(key.data?.key || ''));
+    const rawKey = key.data?.key || '';
 
-    const events = await req('/api/admin/events?limit=5', { headers: { cookie } });
+    // 开放 API：带密钥不需要站点门禁 Cookie
+    const v1NoGate = await req('/api/v1/domains', { headers: { authorization: `Bearer ${rawKey}` }, withGate: false });
+    check('v1 带密钥绕过站点门禁', v1NoGate.status === 200 && Array.isArray(v1NoGate.data?.domains));
+    const v1BadKey = await req('/api/v1/domains', { headers: { authorization: 'Bearer fm_not_real' }, withGate: false });
+    check('v1 无效密钥仍被拒 (401)', v1BadKey.status === 401);
+
+    const events = await req('/api/admin/events?limit=20', { headers: { cookie } });
     check('活动日志可用', events.status === 200 && Array.isArray(events.data?.events));
+
+    // 活动记录删除：只删本次冒烟自己产生的那条
+    const smokeEvent = (events.data?.events || []).find((ev) => ev.kind === 'admin.key.create' && ev.ref === 'smoke');
+    const evDel = smokeEvent
+      ? await req(`/api/admin/events/${smokeEvent.id}`, { method: 'DELETE', headers: { cookie, 'x-admin-csrf': '1' } })
+      : null;
+    check('活动记录可真删', !!evDel && evDel.status === 200, smokeEvent ? '' : '未找到刚创建的事件');
+
+    // API Key 删除是真删，删完旧密钥立刻失效
+    const keyDel = await req(`/api/admin/keys/${encodeURIComponent(key.data?.id)}`, {
+      method: 'DELETE',
+      headers: { cookie, 'x-admin-csrf': '1' },
+    });
+    check('API Key 删除成功', keyDel.status === 200);
+    const keysAfter = await req('/api/admin/keys', { headers: { cookie } });
+    check('删除后列表不再有该密钥', !(keysAfter.data?.keys || []).some((k) => k.id === key.data?.id));
+    const v1After = await req('/api/v1/domains', { headers: { authorization: `Bearer ${rawKey}` }, withGate: false });
+    check('删除后旧密钥立即失效 (401)', v1After.status === 401);
 
     const siteConf = await req('/api/admin/settings', { headers: { cookie } });
     check('可读取站点配置', siteConf.status === 200 && !!siteConf.data?.settings?.brand);
+    check('站点配置含标题与图标', typeof siteConf.data?.settings?.title === 'string' && typeof siteConf.data?.settings?.logo === 'string');
+
+    // 标题 / 图标可保存，随后原样还原，避免污染站点
+    const before = siteConf.data?.settings || {};
+    const patched = await req('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { cookie, 'x-admin-csrf': '1' },
+      body: { ...before, title: 'Smoke 标题', logo: '🧪' },
+    });
+    check('站点标题可保存', patched.data?.settings?.title === 'Smoke 标题');
+    check('站点图标可保存', patched.data?.settings?.logo === '🧪');
+    await req('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { cookie, 'x-admin-csrf': '1' },
+      body: before,
+    });
 
     const account = await req('/api/admin/account', { headers: { cookie } });
     check('可读取管理员账号', account.status === 200 && !!account.data?.username);

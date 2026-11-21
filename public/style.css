@@ -177,6 +177,8 @@ textarea { resize: vertical; min-height: 96px; line-height: 1.6; }
   background: var(--brand); color: #fff; flex: none;
 }
 .brand-logo svg { width: 17px; height: 17px; stroke-width: 1.9; }
+.brand-logo img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.brand-logo .logo-char { font-size: 16px; font-weight: 600; line-height: 1; }
 .brand-name { font-size: 15.5px; font-weight: 650; letter-spacing: -0.2px; white-space: nowrap; }
 #btn-collapse svg { width: 16px; height: 16px; }
 .app.collapsed #btn-collapse { display: none; }
@@ -322,6 +324,8 @@ html[data-theme="dark"] #btn-theme .ic-moon { opacity: 1; transform: none; }
   box-shadow: 0 14px 32px -16px rgba(77, 107, 254, 0.9);
 }
 .hero-logo svg { width: 28px; height: 28px; stroke-width: 1.6; }
+.hero-logo img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.hero-logo .logo-char { font-size: 24px; font-weight: 600; line-height: 1; }
 .hero h1 { margin: 0 0 10px; font-size: 26px; font-size: clamp(24px, 3.4vw, 31px); line-height: 1.32; font-weight: 620; letter-spacing: -0.6px; }
 .hero-sub { margin: 0 0 26px; font-size: 13.5px; color: var(--muted); }
 .hero-notice {

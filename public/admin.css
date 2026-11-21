@@ -118,6 +118,9 @@ table.ad-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .event .ref { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event .time { flex: none; color: var(--muted); font-size: 12px; }
 .event .ip { flex: none; color: var(--muted); font-size: 11.5px; font-family: var(--mono); }
+.event .ev-del { width: 22px; height: 22px; align-self: center; color: var(--muted); }
+.event .ev-del:hover { color: var(--danger); background: transparent; }
+.event .ev-del svg { width: 13px; height: 13px; }
 
 .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .toolbar .search {
@@ -166,6 +169,16 @@ table.ad-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .chip-line { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-line .chip { font-family: var(--mono); font-size: 11.5px; }
 .warn-text { color: #b26a00; }
+
+.logo-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.logo-row > input[type='text'] { flex: 1; min-width: 120px; }
+.logo-preview {
+  display: grid; place-items: center; width: 38px; height: 38px; flex: none;
+  border-radius: 11px; background: var(--brand); color: #fff; overflow: hidden;
+}
+.logo-preview svg { width: 20px; height: 20px; }
+.logo-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.logo-preview .logo-char { font-size: 18px; line-height: 1; }
 
 .banner {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
